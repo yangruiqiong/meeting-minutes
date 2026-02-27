@@ -4,3 +4,4 @@ soundfile
 numpy
 python-docx
 supabase
+scipy

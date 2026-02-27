@@ -54,10 +54,11 @@ def delete_record(supabase, record_id):
 @st.cache_resource(show_spinner="正在加载语音模型...")
 def load_whisper():
     import whisper
-    return whisper.load_model("base")
+    return whisper.load_model("small")
 
 def transcribe_audio_bytes(audio_bytes, suffix=".wav"):
     import soundfile as sf
+    from scipy import signal as scipy_signal
     model = load_whisper()
     with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
         tmp.write(audio_bytes)
@@ -67,10 +68,10 @@ def transcribe_audio_bytes(audio_bytes, suffix=".wav"):
         if data.ndim > 1:
             data = data.mean(axis=1)
         if sr != 16000:
-            new_len = int(len(data) / sr * 16000)
-            data = np.interp(np.linspace(0, len(data), new_len),
-                             np.arange(len(data)), data).astype('float32')
-        result = model.transcribe(data, language='zh')
+            new_len = int(len(data) * 16000 / sr)
+            data = scipy_signal.resample(data, new_len).astype('float32')
+        result = model.transcribe(data, language='zh', task='transcribe',
+                                  temperature=0, best_of=1, beam_size=5)
         return result['text'].strip()
     finally:
         os.unlink(tmp_path)
